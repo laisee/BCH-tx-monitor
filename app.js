@@ -1,9 +1,11 @@
-var bodyParser    = require('body-parser');
-var express 	  = require('express');
-var redis         = require('redis');
-var rp            = require('request-promise');
+const addr        = require('./utils/address');
+const bodyParser  = require('body-parser');
+const express 	  = require('express');
+const redis       = require('redis');
+const request     = require('request');
+const rp          = require('request-promise');
 
-var app           = express()
+const app         = express()
 //var client      = redis.createClient(process.env.REDISCLOUD_URL, {no_ready_check: true});
 
 // assign app settings from envvironment || defaults
@@ -11,56 +13,78 @@ const port    = process.env.PORT || 8080;
 const name    = process.env.HEROKU_APP_NAME || 'Unknown Name';
 const version = process.env.HEROKU_RELEASE_VERSION || 'Unknown Version';
 
-const BTC_ADDR = process.env.BTC_ADDRESS_LIST || '3C8667tWtc9tLU3Fhp8J1u2NQ9fXijS8AM';
+const deposit_address_list = addr.getAddressList('bch');
+const UPDATE_URL = 'https://api.abelegroup.io/monitoring/update_transaction';
+const BCH_TX_URL = 'https://bch-chain.api.btc.com/v3/address/';
+const SATOSHI_NUMBER = 100000000;
 
 // parse application/json
 app.use(bodyParser.json())
 
-// make express look in the public directory for assets (css/js/img)
-app.use(express.static(__dirname + '/public'));
-
 // set the home page route
 app.get('/', function(req, res) {
-    res.json({"name": name,"version": version}); 	
+  res.json({"name": name,"version": version}); 	
 });
 
 //
-// Retrieve last transaction sent to pre-sale/sale BTC address
+// Retrieve last transaction sent to pre-sale/sale BCH address
 //
 app.post('/transaction/update', function(req, res) {
-    const url = "https://blockchain.info/address/" + BTC_ADDR + "?format=json";
-    var options = {
-       uri: url,
-       json: true
-    };
-    rp(options).then(function(body) {
-        const txn  = body.result[0];
-        const ts = +new Date()
-        const sender = body.result[0].from;
-        res.json({"sender": sender, "txn": txn, "timestamp": ts, "count": body.result.length}); 	
-    })
-    .catch(function (err) {
-        res.status(500);
-    });
-});
-
-//
-// Retrieve total transactions sent to BTC address
-//
-app.get('/transaction/total', function(req, res) {
-    const uri = "https://blockchain.info/balance/" + BTC_ADDR + "?format=json";
-    var options = { 
-       uri: url,
-       json: true
-    };
-    rp(options).then(function(body) {
-        const total = body.result;
-        const ts = +new Date()
-        res.json({"currency": "BTC","total": total, "timestamp": ts});
-    })
-    .catch(function (err) {
-        res.status(500);
-    });
+  const errors = [];
+  const promises = [];
+  let count = 0;
+  let total = 0;
+    
+  for (var address of deposit_address_list) {
+    const url = BCH_TX_URL + address +'/tx';
+    console.log("Checking for txns at addy "+address+" using URL "+url);
+    const options = { uri: url, json: true };
+    promises.push(
+      rp(options)
+      .then(function(body) {
+        if (body.data.total_count > 0) {
+          for (var txn of body.data.list) {
+            let data = {};
+            data["wallet_address"] = txn.inputs[0].prev_addresses[0];
+            data["tx_id"] = txn.hash;
+            data["tx_hash"] = txn.hash;
+            data["amount"] = txn.balance_diff/SATOSHI_NUMBER;
+            data["currency"] = 'BCH';
+            count++;
+            total += txn.balance_diff/SATOSHI_NUMBER;;
+            request.post({
+              url: UPDATE_URL,
+              method: "POST",
+              json: true,
+              body: data
+            },
+            function (error, response, body) {
+              if (response.statusCode == 200) {
+                console.log("Updated "+txn.hash+ " successfully for sending wallet"+data.wallet_address+" and amount "+data.amount);
+              } else {
+                console.log("txn update "+txn.hash+ " for wallet "+data.wallet_address+" failed. status was "+response.statusCode+", error was "+body.error);
+                errors.push("Error " +response.statusCode+"  while updating wallet "+data.wallet_address+" - "+body.error);
+              }
+            });
+          }
+          const ts = +new Date();
+        } else {
+          console.log("Address "+address+" has zero transactions");
+        }
+      })
+      .catch(function (err) {
+        errors.push("Error while updating transactions for BCH address "+address+" - "+err);;
+      })
+    );
+  }
+  Promise.all(promises)
+  .then(function(values) {
+     if (errors && errors.length > 0) {
+       res.send({ status: 500, errors: errors });
+     } else {
+       res.send({ status: 200, errors: errors });
+     }
+  });
 });
 
 // Start the app listening to default port
