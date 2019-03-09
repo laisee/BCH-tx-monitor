@@ -12,7 +12,7 @@ const name    = process.env.HEROKU_APP_NAME || 'Unknown Name';
 const version = process.env.HEROKU_RELEASE_VERSION || 'Unknown Version';
 
 const deposit_address_list = addr.getAddressList('bch');
-const UPDATE_URL = 'https://api.abelegroup.io/monitoring/update_transaction';
+const update_url         = process.env.API_UPDATE_URL;
 const BCH_TX_URL = 'https://bch-chain.api.btc.com/v3/address/';
 const SATOSHI_NUMBER = 100000000;
 
@@ -51,7 +51,7 @@ app.post('/transaction/update', function(req, res) {
             count++;
             total += txn.balance_diff/SATOSHI_NUMBER;;
             request.post({
-              url: UPDATE_URL,
+              url: update_url,
               method: "POST",
               json: true,
               body: data
