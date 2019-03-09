@@ -1,12 +1,10 @@
 const addr        = require('./utils/address');
 const bodyParser  = require('body-parser');
 const express 	  = require('express');
-const redis       = require('redis');
 const request     = require('request');
 const rp          = require('request-promise');
 
 const app         = express()
-//var client      = redis.createClient(process.env.REDISCLOUD_URL, {no_ready_check: true});
 
 // assign app settings from envvironment || defaults
 const port    = process.env.PORT || 8080;
