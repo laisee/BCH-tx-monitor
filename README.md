@@ -7,6 +7,10 @@ Heroku node.js app for monitoring one or more BCH addresses for transactions
 Instructions:
 
 1. check out the code
-2. add new heroku app
-3. assign one or more BCH addresses to the Heroku config setting => "heroku config:set BCH_ADDRESS_LIST=XXX,YYY,ZZZ"
+2. install required libs:
+   `npm install`
+3. add new heroku app
+4. assign one or more BCH addresses to the Heroku config setting => "heroku config:set BCH_ADDRESS_LIST=XXX,YYY,ZZZ"
    assign separate addresses by use of commas
+5. run the code using command below:
+   `node app.js`
