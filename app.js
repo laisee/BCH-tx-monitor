@@ -1,8 +1,7 @@
 const addr        = require('./utils/address');
 const bodyParser  = require('body-parser');
 const express 	  = require('express');
-const request     = require('request');
-const rp          = require('request-promise');
+const axios       = require('axios');
 
 const app         = express()
 
@@ -36,10 +35,10 @@ app.post('/transaction/update', function(req, res) {
   for (var address of deposit_address_list) {
     const url = BCH_TX_URL + address +'/tx';
     console.log("Checking for txns at addy "+address+" using URL "+url);
-    const options = { uri: url, json: true };
     promises.push(
-      rp(options)
-      .then(function(body) {
+      axios.get(url)
+      .then(function(response) {
+        const body = response.data;
         if (body.data.total_count > 0) {
           for (var txn of body.data.list) {
             let data = {};
@@ -50,19 +49,18 @@ app.post('/transaction/update', function(req, res) {
             data["currency"] = 'BCH';
             count++;
             total += txn.balance_diff/SATOSHI_NUMBER;;
-            request.post({
-              url: update_url,
-              method: "POST",
-              json: true,
-              body: data
-            },
-            function (error, response, body) {
-              if (response.statusCode == 200) {
+            axios.post(update_url, data)
+            .then(function (response) {
+              if (response.status == 200) {
                 console.log("Updated "+txn.hash+ " successfully for sending wallet"+data.wallet_address+" and amount "+data.amount);
               } else {
-                console.log("txn update "+txn.hash+ " for wallet "+data.wallet_address+" failed. status was "+response.statusCode+", error was "+body.error);
-                errors.push("Error " +response.statusCode+"  while updating wallet "+data.wallet_address+" - "+body.error);
+                console.log("txn update "+txn.hash+ " for wallet "+data.wallet_address+" failed. status was "+response.status);
+                errors.push("Error " +response.status+"  while updating wallet "+data.wallet_address);
               }
+            })
+            .catch(function (error) {
+              console.log("txn update "+txn.hash+ " for wallet "+data.wallet_address+" failed with error: "+error.message);
+              errors.push("Error while updating wallet "+data.wallet_address+" - "+error.message);
             });
           }
           const ts = +new Date();
