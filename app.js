@@ -20,7 +20,7 @@ app.use(bodyParser.json())
 
 // set the home page route
 app.get('/', function(req, res) {
-  res.json({"name": name,"version": version}); 	
+  res.json({"name": name,"version": version});
 });
 
 //
@@ -31,7 +31,7 @@ app.post('/transaction/update', function(req, res) {
   const promises = [];
   let count = 0;
   let total = 0;
-    
+
   for (var address of deposit_address_list) {
     const url = BCH_TX_URL + address +'/tx';
     console.log("Checking for txns at addy "+address+" using URL "+url);
@@ -87,3 +87,6 @@ app.post('/transaction/update', function(req, res) {
 app.listen(port, function() {
    console.log(name + ' app is running on port ' + port);
 });
+
+// Export app for testing
+module.exports = app;
