@@ -1,6 +1,7 @@
 # BCH Transaction Monitor
 
 [![Node.js CI](https://github.com/laisee/BCH-tx-monitor/actions/workflows/node.js.yml/badge.svg)](https://github.com/laisee/BCH-tx-monitor/actions/workflows/node.js.yml)
+[![Dependabot Updates](https://github.com/laisee/BCH-tx-monitor/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/laisee/BCH-tx-monitor/actions/workflows/dependabot/dependabot-updates)
 
 Heroku node.js app for monitoring one or more BCH addresses for transactions
 
